@@ -57,47 +57,87 @@ async function sendMessage() {
     input.disabled = true;
     sendButton.disabled = true;
 
-    const botMessage = document.createElement("div");
-    botMessage.className = "message bot";
-    botMessage.innerHTML = `
-        <div class="message-avatar">👽</div>
-        <div class="message-content"></div>
-    `;
-    const botContent = botMessage.querySelector('.message-content');
+    let botMessage = null;
+    let botContent = null;
 
     try {
-
         const response = await fetch("/answer/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ answer: text })
         });
 
-        typingIndicator.style.display = 'none';
-        messages.appendChild(botMessage);
-
         if (!response.ok) {
+            botMessage = document.createElement("div");
+            botMessage.className = "message bot";
+            botMessage.innerHTML = `
+                <div class="message-avatar">👽</div>
+                <div class="message-content"></div>
+            `;
+            botContent = botMessage.querySelector('.message-content');
+            messages.appendChild(botMessage);
             const error = await response.json();
             botContent.textContent = `❌ Error: ${error.detail}`;
             botContent.classList.add('error-message');
             return;
         }
-
-        const data = await response.json();
-        const answer = data.answer;
-        const sources = data.sources;
-        const words = answer.split(/(\s+)/);
-        botContent.textContent = "";
-        for (let i = 0; i < words.length; i++) {
-            botContent.textContent += words[i];
-            messages.scrollTop = messages.scrollHeight;
-            await new Promise(res => setTimeout(res, 8));
-        }
-        if (sources && sources.length > 0) {
-            const sourcesDiv = document.createElement('div');
-            sourcesDiv.className = 'sources';
-            sourcesDiv.innerHTML = `<br><span style='font-size:0.9em;color:#888'>📚 Fuentes: ${sources.map(escapeHtml).join(', ')}</span>`;
-            botContent.appendChild(sourcesDiv);
+        let fullAnswer = '';
+        let sources = null;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        try {
+            let firstChunk = true;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n\n').filter(line => line.trim());
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.replace('data: ', '').trim();
+                        if (dataStr === '[DONE]') break;
+                        try {
+                            const data = JSON.parse(dataStr);
+                            if (data.answer !== null) {
+                                fullAnswer += data.answer;
+                                if (firstChunk) {
+                                    typingIndicator.style.display = 'none';
+                                    botMessage = document.createElement("div");
+                                    botMessage.className = "message bot";
+                                    botMessage.innerHTML = `
+                                        <div class="message-avatar">👽</div>
+                                        <div class="message-content"></div>
+                                    `;
+                                    botContent = botMessage.querySelector('.message-content');
+                                    messages.appendChild(botMessage);
+                                    botContent.textContent = fullAnswer;
+                                    messages.scrollTop = messages.scrollHeight;
+                                    firstChunk = false;
+                                } else {
+                                    botContent.textContent = fullAnswer;
+                                    messages.scrollTop = messages.scrollHeight;
+                                }
+                            }
+                            if (data.sources !== null) {
+                                sources = data.sources;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing JSON:', e);
+                        }
+                    }
+                }
+            }
+            if (sources && sources.length > 0) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.className = 'sources';
+                sourcesDiv.innerHTML = `<br><span style='font-size:0.9em;color:#888'>📚 Fuentes: ${sources.map(escapeHtml).join(', ')}</span>`;
+                botContent.appendChild(sourcesDiv);
+                messages.scrollTop = messages.scrollHeight;
+            }
+        } catch (error) {
+            console.error('Stream error:', error);
+            botContent.textContent = `❌ Error en el stream: ${error.message}`;
+            botContent.classList.add('error-message');
         }
 
     } catch (err) {

@@ -20,23 +20,40 @@ def get_context_from_rag(question: str):
     sources = [d.metadata["id"] for d in docs]
     return context, sources
 
-def openai_completion(prompt: str) -> str:
-    # Configurar SSL
+def openai_streaming_completion(prompt: str):
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE    
+    ssl_context.verify_mode = ssl.CERT_NONE
     http_client = httpx.Client(verify=False)
     client = OpenAI(http_client=http_client)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        stream=False
+        stream=True
     )
-    return response.choices[0].message.content.strip()
+    for chunk in response:
+        content = chunk.choices[0].delta.content or ""
+        yield content
+
 
 @router.post("/answer/")
 async def chat_stream(payload: PromptInput):
     context, sources = get_context_from_rag(payload.answer)
     prompt = f"Usa la siguiente información para responder la pregunta:\n{context}\n\nPregunta: {payload.answer}"
-    answer = openai_completion(prompt)
-    return {"answer": answer, "sources": sources}
+
+    def generate():
+        full_answer = ""
+        for chunk in openai_streaming_completion(prompt):
+            yield f"data: {json.dumps({'answer': chunk, 'sources': None})}\n\n"
+            full_answer += chunk
+        yield f"data: {json.dumps({'answer': None, 'sources': sources})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
