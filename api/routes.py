@@ -20,7 +20,7 @@ def get_context_from_rag(question: str):
     sources = [d.metadata["id"] for d in docs]
     return context, sources
 
-def openai_stream_response(prompt: str, sources: list):
+def openai_completion(prompt: str) -> str:
     # Configurar SSL
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
@@ -30,20 +30,13 @@ def openai_stream_response(prompt: str, sources: list):
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        stream=True
+        stream=False
     )
-
-    def generate():
-        for chunk in response:
-            content = chunk.choices[0].delta.content or ""
-            yield content
-    
-        yield f"\n\n📚 Fuentes: {', '.join(sources)}"
-
-    return StreamingResponse(generate(), media_type="text/plain")
+    return response.choices[0].message.content.strip()
 
 @router.post("/answer/")
 async def chat_stream(payload: PromptInput):
     context, sources = get_context_from_rag(payload.answer)
-    prompt = f"""Usa la siguiente información para responder la pregunta:\n{context}\n\nPregunta: {payload.answer}"""
-    return openai_stream_response(prompt, sources)
+    prompt = f"Usa la siguiente información para responder la pregunta:\n{context}\n\nPregunta: {payload.answer}"
+    answer = openai_completion(prompt)
+    return {"answer": answer, "sources": sources}

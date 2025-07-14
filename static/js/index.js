@@ -66,6 +66,7 @@ async function sendMessage() {
     const botContent = botMessage.querySelector('.message-content');
 
     try {
+
         const response = await fetch("/answer/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -82,19 +83,21 @@ async function sendMessage() {
             return;
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let accumulatedText = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            accumulatedText += chunk;
-            botContent.textContent = accumulatedText;
-
+        const data = await response.json();
+        const answer = data.answer;
+        const sources = data.sources;
+        const words = answer.split(/(\s+)/);
+        botContent.textContent = "";
+        for (let i = 0; i < words.length; i++) {
+            botContent.textContent += words[i];
             messages.scrollTop = messages.scrollHeight;
+            await new Promise(res => setTimeout(res, 8));
+        }
+        if (sources && sources.length > 0) {
+            const sourcesDiv = document.createElement('div');
+            sourcesDiv.className = 'sources';
+            sourcesDiv.innerHTML = `<br><span style='font-size:0.9em;color:#888'>📚 Fuentes: ${sources.map(escapeHtml).join(', ')}</span>`;
+            botContent.appendChild(sourcesDiv);
         }
 
     } catch (err) {
