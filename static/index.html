@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon">
+  <title>Chat RAG</title>
+  <link rel="stylesheet" href="/static/css/index.css">
+</head>
+
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>👽 Chat RAG</h1>
+      <p>Asistente inteligente con streaming en tiempo real</p>
+    </div>
+
+    <div class="messages-container" id="messages">
+      <div class="message bot">
+        <div class="message-avatar">👽</div>
+        <div class="message-content">
+          ¡Hola! Soy tu asistente RAG. Puedes hacerme cualquier pregunta y te responderé en tiempo real. ¿En qué puedo
+          ayudarte hoy?
+        </div>
+      </div>
+    </div>
+
+    <div class="typing-indicator" id="typingIndicator">
+      <div class="typing-dots">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+
+    <div class="input-container">
+      <input type="text" id="question" class="input-field" placeholder="Escribe tu pregunta aquí..." maxlength="500">
+      <button id="sendButton" class="send-button">
+        <span>▶</span>
+      </button>
+    </div>
+  </div>
+  <script src="/static/js/index.js"></script>
+</body>
+
+</html>
