@@ -1,23 +1,19 @@
 let isTyping = false;
 
 window.addEventListener('load', function () {
-    console.log("JavaScript loaded successfully");
 
     const input = document.getElementById('question');
     const sendButton = document.getElementById('sendButton');
 
-    // Enviar mensaje con Enter
     input.addEventListener('keypress', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); // Evita salto de línea
+            e.preventDefault();
             sendMessage();
         }
     });
 
-    // Enviar mensaje con clic en el botón
     sendButton.addEventListener("click", sendMessage);
 
-    // Auto-resize del input
     input.addEventListener('input', function () {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
@@ -47,7 +43,6 @@ async function sendMessage() {
     const sendButton = document.getElementById("sendButton");
     const typingIndicator = document.getElementById("typingIndicator");
 
-    // Añadir mensaje del usuario
     const userMessage = document.createElement("div");
     userMessage.className = "message user";
     userMessage.innerHTML = `
@@ -56,15 +51,12 @@ async function sendMessage() {
     `;
     messages.appendChild(userMessage);
 
-    // Mostrar indicador de escritura
     typingIndicator.style.display = 'block';
     messages.scrollTop = messages.scrollHeight;
 
-    // Deshabilitar input
     input.disabled = true;
     sendButton.disabled = true;
 
-    // Crear mensaje del bot
     const botMessage = document.createElement("div");
     botMessage.className = "message bot";
     botMessage.innerHTML = `
@@ -74,13 +66,12 @@ async function sendMessage() {
     const botContent = botMessage.querySelector('.message-content');
 
     try {
-        const response = await fetch("/chat-stream/", {
+        const response = await fetch("/answer/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question: text })
+            body: JSON.stringify({ answer: text })
         });
 
-        // Ocultar indicador de escritura y mostrar mensaje del bot
         typingIndicator.style.display = 'none';
         messages.appendChild(botMessage);
 
@@ -103,7 +94,6 @@ async function sendMessage() {
             accumulatedText += chunk;
             botContent.textContent = accumulatedText;
 
-            // Auto-scroll
             messages.scrollTop = messages.scrollHeight;
         }
 
@@ -115,14 +105,12 @@ async function sendMessage() {
         botContent.textContent = "❌ Error al conectar con el servidor.";
         botContent.classList.add('error-message');
     } finally {
-        // Rehabilitar input
         input.disabled = false;
         sendButton.disabled = false;
         isTyping = false;
         input.value = "";
         input.focus();
 
-        // Scroll final
         messages.scrollTop = messages.scrollHeight;
     }
 }
